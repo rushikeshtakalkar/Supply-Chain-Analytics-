@@ -1,0 +1,27 @@
+-- Power BI DAX measures (tables: Order_Fact, Inventory_Snapshot, Supplier_Scorecard)
+Total Orders = DISTINCTCOUNT(Order_Fact[Order_ID])
+Units Ordered = SUM(Order_Fact[Order_Qty])
+Units Delivered = SUM(Order_Fact[Delivered_Qty])
+Revenue = SUMX(Order_Fact, Order_Fact[Delivered_Qty] * Order_Fact[Unit_Price_INR])
+COGS = SUMX(Order_Fact, Order_Fact[Delivered_Qty] * Order_Fact[Unit_Cost_INR])
+Gross Profit = [Revenue] - [COGS]
+Gross Margin % = DIVIDE([Gross Profit], [Revenue], 0)
+On-Time & Complete % =
+DIVIDE(
+    CALCULATE(COUNTROWS(Order_Fact),
+        Order_Fact[Actual_Lead_Days] <= Order_Fact[Promised_Days],
+        Order_Fact[Delivered_Qty] = Order_Fact[Order_Qty]),
+    COUNTROWS(Order_Fact), 0
+)
+Late Orders =
+CALCULATE(COUNTROWS(Order_Fact),
+    Order_Fact[Actual_Lead_Days] > Order_Fact[Promised_Days])
+Late Delivery % = DIVIDE([Late Orders], [Total Orders], 0)
+Fill Rate % = DIVIDE([Units Delivered], [Units Ordered], 0)
+Inventory Value = SUM(Inventory_Snapshot[Inventory_Value_INR])
+SKUs Reorder Now =
+CALCULATE(COUNTROWS(Inventory_Snapshot),
+    Inventory_Snapshot[Stock_Status] = "Reorder Now")
+SKUs Needing Attention =
+CALCULATE(COUNTROWS(Inventory_Snapshot),
+    Inventory_Snapshot[Stock_Status] <> "Healthy")
