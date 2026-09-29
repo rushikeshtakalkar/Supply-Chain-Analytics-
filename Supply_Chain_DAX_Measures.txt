@@ -1,0 +1,79 @@
+-- Create these measures in Power BI (Modeling > New measure)
+-- Table names assumed: Order_Fact and Inventory_Snapshot
+
+Total Orders =
+DISTINCTCOUNT ( Order_Fact[Order_ID] )
+
+Units Ordered =
+SUM ( Order_Fact[Order_Qty] )
+
+Units Delivered =
+SUM ( Order_Fact[Delivered_Qty] )
+
+Revenue (INR) =
+SUMX (
+    Order_Fact,
+    Order_Fact[Delivered_Qty] * Order_Fact[Unit_Price_INR]
+)
+
+COGS (INR) =
+SUMX (
+    Order_Fact,
+    Order_Fact[Delivered_Qty] * Order_Fact[Unit_Cost_INR]
+)
+
+Gross Profit (INR) =
+[Revenue (INR)] - [COGS (INR)]
+
+Gross Margin % =
+DIVIDE ( [Gross Profit (INR)], [Revenue (INR)], 0 )
+
+On-Time & Complete % =
+DIVIDE (
+    CALCULATE (
+        COUNTROWS ( Order_Fact ),
+        FILTER (
+            Order_Fact,
+            Order_Fact[Actual_Lead_Days] <= Order_Fact[Promised_Days]
+                && Order_Fact[Delivered_Qty] = Order_Fact[Order_Qty]
+        )
+    ),
+    COUNTROWS ( Order_Fact ),
+    0
+)
+
+Late Order Lines =
+CALCULATE (
+    COUNTROWS ( Order_Fact ),
+    FILTER (
+        Order_Fact,
+        Order_Fact[Actual_Lead_Days] > Order_Fact[Promised_Days]
+    )
+)
+
+Fill Rate % =
+DIVIDE ( [Units Delivered], [Units Ordered], 0 )
+
+Inventory Value (INR) =
+SUM ( Inventory_Snapshot[Inventory_Value_INR] )
+
+SKUs to Reorder =
+CALCULATE (
+    COUNTROWS ( Inventory_Snapshot ),
+    Inventory_Snapshot[Stock_Status] = "Reorder Now"
+)
+
+SKUs Needing Attention =
+CALCULATE (
+    COUNTROWS ( Inventory_Snapshot ),
+    Inventory_Snapshot[Stock_Status] <> "Healthy"
+)
+
+Average Lead Days =
+AVERAGE ( Order_Fact[Actual_Lead_Days] )
+
+Partial Order Lines =
+CALCULATE (
+    COUNTROWS ( Order_Fact ),
+    FILTER ( Order_Fact, Order_Fact[Delivered_Qty] < Order_Fact[Order_Qty] )
+)
